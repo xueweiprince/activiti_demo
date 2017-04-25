@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:p="http://www.springframework.org/schema/p"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	 http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+	 http://www.springframework.org/schema/context
+	 http://www.springframework.org/schema/context/spring-context-2.5.xsd
+	 http://www.springframework.org/schema/tx 
+	 http://www.springframework.org/schema/tx/spring-tx-2.5.xsd 
+	 http://www.springframework.org/schema/aop 
+	 http://www.springframework.org/schema/aop/spring-aop-2.5.xsd
+	 http://www.springframework.org/schema/mvc
+	 http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd ">
+
+	<context:property-placeholder location="classpath:redis.properties" />
+
+	<!-- 事物管理 -->
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED" />
+			<tx:method name="save*" propagation="REQUIRED" />
+			<tx:method name="del*" propagation="REQUIRED" />
+		</tx:attributes>
+	</tx:advice>
+
+	<aop:config>
+		<aop:pointcut expression="execution(* com.st.demo.web.service.impl.*.*(..))"
+			id="interceptorpointcut" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="interceptorpointcut" />
+	</aop:config>
+
+	<!-- 基于hibernate事务管理 -->
+	<!-- <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager"> 
+		<property name="sessionFactory" ref="sessionFactory"></property> </bean> -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+
+	<!-- 配置redis开始 -->
+	<bean id="poolConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxIdle" value="${redis.maxIdle}" />
+		<property name="maxTotal" value="${redis.maxActive}" />
+		<property name="maxWaitMillis" value="${redis.maxWait}" />
+		<property name="testOnBorrow" value="${redis.testOnBorrow}" />
+	</bean>
+
+	<bean id="connectionFactory"
+		class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory"
+		p:host-name="${redis.host}" p:port="${redis.port}" p:password="${redis.pass}"
+		p:pool-config-ref="poolConfig" />
+
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.StringRedisTemplate">
+		<property name="connectionFactory" ref="connectionFactory" />
+	</bean>
+
+	<!--<bean id="userDAO" class="com.st.demo.web.dao.impl.RedisUserDaoImpl" />-->
+
+	<bean id="redisService" class="com.st.demo.web.service.RedisService" />
+
+	<!-- redis配置结束 -->
+
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="com.mysql.jdbc.Driver" />
+		<property name="jdbcUrl" value="jdbc:mysql://localhost:3306/test" />
+		<property name="maxIdleTime" value="25000" />
+		<property name="properties">
+			<props>
+				<prop key="user">root</prop>
+				<prop key="password">root</prop>
+				<prop key="c3p0.acquire_increment">2</prop>
+				<prop key="c3p0.max_size">20</prop>
+				<prop key="c3p0.min_size">1</prop>
+			</props>
+		</property>
+	</bean>
+
+	<!-- 集成mybatis 配置mybatis的sqlsessionFactory(用来生成sqlsession的) -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<!-- 指定sqlMapConfig总配置文件，订制的environment在spring容器中不在生效 -->
+		<property name="configLocation" value="classpath:sqlMapConfig.xml" />
+		<!-- 自动扫某个包下面的，包中的所有注解类。如下，就是扫描的的POJO包下的所有包中的所有类，如果你要是把实体类直接写在POJO下，是扫不到的，注意 -->
+		<!-- <property name="packagesToScan" value="com.huiquan.baoming.POJO.*" /> -->
+		<!--指定实体类映射文件，可以指定同时指定某一包以及子包下面的所有配置文件，mapperLocations和configLocation有一个即可，当需要为实体类指定别名时，可指定configLocation属性，再在mybatis总配置文件中采用mapper引入实体类映射文件 -->
+		<!-- <property name="mapperLocations" value="classpath*:com/xxt/ibatis/dbcp/**/*.xml"/> -->
+	</bean>
+
+	<!-- 扫描mapper.java -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.st.demo.web.dao" />
+		<property name="sqlSessionFactory" ref="sqlSessionFactory" />
+	</bean>
+
+	<!-- 流程引擎的配置bean -->
+	<bean id="processEngineConfiguration" class="org.activiti.spring.SpringProcessEngineConfiguration">
+		<property name="dataSource" ref="dataSource" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="databaseSchemaUpdate" value="true" />
+		<property name="jobExecutorActivate" value="false" />
+		<property name="activityFontName" value="宋体"></property>
+		<property name="labelFontName" value="宋体"></property>
+		<!-- 下面一个属性不是必须的，其只是一种部署流程的方式，可如下配置（它会在服务启动的时侯自动加载）,也可不配置，而在程序中手动部署 -->
+		<!-- <property name="deploymentResources" value="classpath*:/com/spring/activiti/pbmn/test.bpmn"/> -->
+		<!-- 在引擎中注册自定义表单类型 -->
+		<property name="customFormTypes">
+			<list>
+				<bean
+					class="com.st.demo.web.activititype.JavascriptFormType" />
+				<bean class="com.st.demo.web.activititype.UsersFormType" />
+			</list>
+		</property>
+	</bean>
+
+	<!-- 流程引擎工厂 -->
+	<bean id="processEngineFactory" class="org.activiti.spring.ProcessEngineFactoryBean">
+		<property name="processEngineConfiguration" ref="processEngineConfiguration" />
+	</bean>
+
+	<bean id="repositoryService" factory-bean="processEngineFactory"
+		factory-method="getRepositoryService" />
+
+	<bean id="runtimeService" factory-bean="processEngineFactory"
+		factory-method="getRuntimeService" />
+
+	<bean id="formService" factory-bean="processEngineFactory"
+		factory-method="getFormService" />
+
+	<bean id="identityService" factory-bean="processEngineFactory"
+		factory-method="getIdentityService" />
+
+	<bean id="taskService" factory-bean="processEngineFactory"
+		factory-method="getTaskService" />
+
+	<bean id="historyService" factory-bean="processEngineFactory"
+		factory-method="getHistoryService" />
+
+	<bean id="managementService" factory-bean="processEngineFactory"
+		factory-method="getManagementService" />
+
+	<!-- 集成hibernate -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernateDialect">
+					org.hibernate.dialect.MySQLDialect
+				</prop>
+				<prop key="hibernate.show_sql">true</prop>
+			</props>
+		</property>
+
+		<!-- 这种方式可以指定任路径的映射文件，并可加前缀，加通配符 -->
+		<!-- <property name="mappingLocations">
+			<value>classpath:/com/company/domainmaps/*.hbm.xml </value>
+		</property> -->
+		<!-- 这种方式配置具体的映身文件
+		<property name="mappingResources"> <value>com/gd/po/mapping/TestUser.hbm.xml</value> </property>
+		 -->
+	</bean>
+
+	<!-- <bean id="regdit" class="com.gd.action.LoginAction"> </bean> -->
+	
+	
+	<!-- 配置获取spring上下文的工具类 -->
+	<bean class = "com.st.demo.web.common.SpringContextUtil" id="springContextUtil" />
+	
+	<!-- spring security的异常信息,在这里做注入是为了可以将异常信息在代码中取出来 (异常信息本地化) -->
+	<bean id="messageSource"
+	   class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+	      <property name="basename" value="classpath:org/springframework/security/messages" />
+   </bean>
+
+</beans>

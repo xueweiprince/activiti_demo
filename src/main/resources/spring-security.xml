@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+          http://www.springframework.org/schema/security
+          http://www.springframework.org/schema/security/spring-security-3.1.xsd">
+
+	<security:http pattern="/**/*.jsp" security="none" />
+	<security:http pattern="/**/*.jpg" security="none" />
+	<security:http pattern="/**/*.ico" security="none" />
+	<security:http pattern="/**/*.png" security="none" />
+	<security:http pattern="/**/*.gif" security="none" />
+	<security:http pattern="/**/*.css" security="none" />
+	<security:http pattern="/**/*.js" security="none" />
+	<security:http pattern="/**/*.swf" security="none" />
+	<security:http pattern="/**/*.html" security="none" />
+	<security:http security="none" pattern="/login.jsp" />
+	<security:http security="none" pattern="/regist.jsp" />
+	<security:http security="none" pattern="/**/regist.do" />
+
+	<!-- 笔记： default-target-url:用来指定用户直接访问login-page所指定的页面(本例是login.jsp)时,认证成功后所跳转的页面 
+		authentication-success-handler-ref:登录认证成功后由该属性所指定的类来处理,此时default-target-url的属性就不再起作用 
+		authentication-failure-url:认证失败时跳转的页面 authentication-failure-handler-ref:认证失败时由该属性所指定的类进行处理,此时authentication-failure-url属性就不再起作用 -->
+	<security:http auto-config="true">
+		<security:form-login login-page="/login.jsp"
+			login-processing-url="/login.do" default-target-url="/index.jsp"
+			authentication-failure-url="login.jsp"
+			authentication-success-handler-ref="authSuccess"
+			authentication-failure-handler-ref="authFailure" username-parameter="username"
+			password-parameter="password" />
+		<security:intercept-url pattern="/**" access="ROLE_USER" />
+	</security:http>
+	
+	<!-- 用户登录认证-start -->
+	<security:authentication-manager>
+		<security:authentication-provider user-service-ref="userDetailsService">
+			<security:password-encoder hash="md5" base64="true">
+	            <security:salt-source user-property="username"/>
+	        </security:password-encoder>
+			<!-- <security:jdbc-user-service data-source-ref="dataSource"
+				users-by-username-query="select username,
+                                        password_,
+                                        email,
+                                        enabled_
+                                          from t_user_info
+                                        where username = ?
+            							  and enabled_ = 1"
+				authorities-by-username-query="
+				SELECT u.username , r.ROLENAME AS authority FROM t_user_info u JOIN
+				t_user_role_rel ur ON u.ID_=ur.USER_ID JOIN
+				t_role_info r ON r.ID_=ur.ROLE_ID WHERE u.username=? " /> -->
+		</security:authentication-provider>
+	</security:authentication-manager>
+	<!-- 用户登录认证-end -->
+
+	<!-- 此处是用于测试的 -->
+	<!-- <security:authentication-manager>
+		<security:authentication-provider>
+			<security:user-service>
+				<security:user name="user" password="user"
+					authorities="ROLE_USER" />
+				<security:user name="admin" password="admin"
+					authorities="ROLE_USER, ROLE_ADMIN" />
+			</security:user-service>
+		</security:authentication-provider>
+	</security:authentication-manager> -->
+
+	<!-- 认证成功后进行处理的类 -->
+	<bean id="authSuccess" class="com.st.demo.web.security.AuthenSuccessHandler"></bean>
+	
+	<bean id="authFailure" class="com.st.demo.web.security.AuthenFailureHandler"></bean>
+	
+	<!-- 自定义userDetailsService实现类 -->
+	<bean id="userDetailsService"
+      class="com.st.demo.web.security.MyUserDetailsService">
+      <property name="dataSource" ref="dataSource" />
+      <property name="usersByUsernameQuery" value="select username,password,email,enabled from t_users_info where username = ? and enabled = 1"></property>
+      <property name="authoritiesByUsernameQuery" value="SELECT u.username , r.ROLENAME AS authority FROM t_user_info u JOIN t_user_role_rel ur ON u.ID_=ur.USER_ID JOIN t_role_info r ON r.ID_=ur.ROLE_ID WHERE u.username=?"></property>
+   </bean>
+   
+   <!-- <bean id="userDetailsService" class="org.springframework.security.core.userdetails.jdbc.JdbcDaoImpl">
+      <property name="dataSource" ref="dataSource"/>
+   </bean> -->
+
+</beans>

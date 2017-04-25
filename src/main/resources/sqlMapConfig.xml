@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>     
+<!DOCTYPE configuration     
+    PUBLIC "-//mybatis.org//DTD Config 3.0//EN"     
+    "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<typeAliases>
+		<!--给实体类起一个别名 user -->
+		<typeAlias type="com.st.demo.web.vo.User" alias="User" />
+	</typeAliases>
+	<!-- 这里交给sqlSessionFactory 的 mapperLocations属性去得到所有配置信息,即，如果不在这里配置mappers的话，那么 mapper就要交给sqlSessionFactory中的mapperLocations去配，这里，我们还是先在这里配一个看一下-->
+	<!-- 
+	<mappers>
+	    <mapper resource="com/yihaomen/mapper/User.xml"/>
+	</mappers>
+	--> 
+	<mappers>
+		<!--userMapper.xml装载进来 同等于把“dao”的实现装载进来 -->
+		<mapper resource="com/st/demo/web/dao/mapper/UserMapper.xml" />
+		<mapper resource="com/st/demo/web/dao/mapper/SystemAcount.xml" />
+	</mappers>
+</configuration>
