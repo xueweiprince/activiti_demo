@@ -87,10 +87,10 @@
 		</property>
 		
 		<property name="prefix">
-			<value>/WEB-INF/jsp/</value>
+			<value>/WEB-INF/page/</value>
 		</property>
 		<property name="suffix">
-			<value>.jsp</value>
+			<value>.html</value>
 		</property>
 		
 	</bean>

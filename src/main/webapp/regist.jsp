@@ -41,10 +41,10 @@
             <div class="content-wrap">
                 <h6>Sign Up</h6>
                 <form action="activiti/systemacount/regist.do" method="post">
-                <input class="span12" type="text" name="username" check-type="mail required" placeholder="E-mail address" />
-                <input class="span12" type="password" id="pw1" name="password" placeholder="Password" />
-                <input class="span12" type="password" name="confirmpassword" placeholder="Confirm Password" />
-                <label class="label label-warning hide" for="pw1" style="margin-bottom: -30px;margin-top:10px">两次密码输入不一致</label>
+                    <input class="span12" type="text" name="username" check-type="mail required" placeholder="E-mail address" />
+                    <input class="span12" type="password" id="pw1" name="password" placeholder="Password" />
+                    <input class="span12" type="password" name="confirmpassword" placeholder="Confirm Password" />
+                    <label class="label label-warning hide" for="pw1" style="margin-bottom: -30px;margin-top:10px">两次密码输入不一致</label>
                 </form>
                 <div class="action">
                     <a class="btn-glow primary signup" onclick="commit()">Sign up</a>

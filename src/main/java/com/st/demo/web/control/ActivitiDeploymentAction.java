@@ -3,6 +3,9 @@ package com.st.demo.web.control;
 import java.io.InputStream;
 import java.util.zip.ZipInputStream;
 
+import com.st.demo.framwork.annotation.PrivilegeAction;
+import com.st.demo.framwork.annotation.PrivilegeModel;
+import com.st.demo.web.util.Constants;
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.repository.DeploymentBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +19,14 @@ import com.st.demo.web.util.FilenameUtils;
 
 @Controller
 @RequestMapping(value = "/activiti/deployment")
+@PrivilegeModel(model = Constants.PRVIVLEGE_ACTIVITI,childmodel = Constants.PRIVILEGE_ACTIVITI_DEPLOYMENT)
 public class ActivitiDeploymentAction {
 
     @Autowired
     RepositoryService repositoryService;
 
     @RequestMapping(value = "deploy")
+    @PrivilegeAction(action = Constants.PRIVILEGE_ACTIVITI_DODEPLOY)
     public ModelAndView deploy(@RequestParam MultipartFile file) {
 
         try {

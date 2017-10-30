@@ -5,7 +5,7 @@
 <mapper namespace="com.st.demo.web.dao.ISystemAcountDao">
 
 	<insert id="addAcount" parameterType="com.st.demo.web.vo.UserVO" >
-		INSERT INTO t_users_info VALUES (#{userName}, #{password}, #{enable}, #{email})
+		INSERT INTO t_users_info(username,password,enabled,email) VALUES (#{userName}, #{password}, #{enable}, #{email})
 	</insert>
 
 </mapper>

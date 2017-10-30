@@ -16,6 +16,14 @@
 	<security:http pattern="/**/*.js" security="none" />
 	<security:http pattern="/**/*.swf" security="none" />
 	<security:http pattern="/**/*.html" security="none" />
+
+	<security:http pattern="/css/*" security="none" />
+	<security:http pattern="/font/*" security="none" />
+	<security:http pattern="/img/*" security="none" />
+	<security:http pattern="/js/*" security="none" />
+	<security:http pattern="/easyui-1.4.5/*" security="none" />
+	<security:http pattern="/chahua3219/**" security="none" />
+
 	<security:http security="none" pattern="/login.jsp" />
 	<security:http security="none" pattern="/regist.jsp" />
 	<security:http security="none" pattern="/**/regist.do" />
@@ -31,12 +39,13 @@
 			authentication-failure-handler-ref="authFailure" username-parameter="username"
 			password-parameter="password" />
 		<security:intercept-url pattern="/**" access="ROLE_USER" />
+		<security:custom-filter ref="filterSecurityInterceptor" before="FILTER_SECURITY_INTERCEPTOR" />
 	</security:http>
-	
+
 	<!-- 用户登录认证-start -->
-	<security:authentication-manager>
+	<security:authentication-manager alias="authenticationManager">
 		<security:authentication-provider user-service-ref="userDetailsService">
-			<security:password-encoder hash="md5" base64="true">
+			<security:password-encoder hash="md5">
 	            <security:salt-source user-property="username"/>
 	        </security:password-encoder>
 			<!-- <security:jdbc-user-service data-source-ref="dataSource"
@@ -76,9 +85,38 @@
 	<bean id="userDetailsService"
       class="com.st.demo.web.security.MyUserDetailsService">
       <property name="dataSource" ref="dataSource" />
-      <property name="usersByUsernameQuery" value="select username,password,email,enabled from t_users_info where username = ? and enabled = 1"></property>
-      <property name="authoritiesByUsernameQuery" value="SELECT u.username , r.ROLENAME AS authority FROM t_user_info u JOIN t_user_role_rel ur ON u.ID_=ur.USER_ID JOIN t_role_info r ON r.ID_=ur.ROLE_ID WHERE u.username=?"></property>
+      <property name="usersByUsernameQuery" value="select username,password,enabled,email from t_users_info where username = ? and enabled = 1"></property>
+      <property name="authoritiesByUsernameQuery" value="SELECT u.username,r.role AS authority FROM	t_users_info u JOIN t_user_role_rel ur ON u.id = ur.userid JOIN t_roles r ON r.id = ur.roleid WHERE u.username = ?"></property>
    </bean>
+
+	<!-- 数据库资源获取-bean -->
+	<bean id="filterInvocationSecurityMetadataSource"
+				class="com.st.demo.web.security.MyFilterInvocationSecurityMetadataSource">
+		<property name="resourceQuery"
+						value="
+              SELECT
+					re.url,
+					ro.role
+				FROM
+					t_roles ro
+				JOIN t_role_resource_rel rrr ON rrr.roleid = ro.id
+				JOIN t_resources re ON rrr.resourceid = re.id
+				WHERE
+					re.url IS NOT NULL
+				AND ro.role IS NOT NULL
+				ORDER BY
+					re.url DESC
+    " />
+	</bean>
+
+	<!-- 修改拦截器,增加数据库获取资源的类-start -->
+	<bean id="filterSecurityInterceptor"
+				class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor"
+				autowire="byType">
+		<property name="securityMetadataSource"
+						ref="filterInvocationSecurityMetadataSource" />
+		<property name="authenticationManager" ref="authenticationManager" />
+	</bean>
    
    <!-- <bean id="userDetailsService" class="org.springframework.security.core.userdetails.jdbc.JdbcDaoImpl">
       <property name="dataSource" ref="dataSource"/>

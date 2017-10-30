@@ -1,0 +1,38 @@
+<div ng-controller="clickDemoCtrl" id="sidebar-nav">
+    <ul id="dashboard-menu">
+        <li class="active">
+            <div class="pointer">
+                <div class="arrow"></div>
+                <div class="arrow_border"></div>
+            </div>
+            <a ui-sref="index">
+                <i class="icon-home"></i>
+                <span>Home</span>
+            </a>
+        </li>
+        <li ng-click="toggle()" >
+            <a class="dropdown-toggle1" href="#">
+                <i class="icon-cog"></i>
+                <span>个人中心</span>
+                <i class="icon-chevron-down"></i>
+            </a>
+            <ul id="submenutest" class="submenu">
+                <li><a ui-sref=".task" ng-click="test()">Task List</a></li>
+                <li><a href="new-user.html">My Deployment</a></li>
+            </ul>
+        </li>
+        <li>
+            <a class="dropdown-toggle" ui-sref=".test">
+                <i class="icon-share-alt"></i>
+                <span>测试angular可以从springMVC返回页面</span>
+                <i class="icon-chevron-down"></i>
+            </a>
+            <ul class="submenu">
+                <li><a href="code-editor.html">Code editor</a></li>
+                <li><a href="grids.html">Grids</a></li>
+                <li><a href="signin.html">Sign in</a></li>
+                <li><a href="signup.html">Sign up</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>

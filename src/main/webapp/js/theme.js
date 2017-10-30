@@ -61,6 +61,7 @@ $(function () {
 
   // sidebar menu dropdown toggle
   $("#dashboard-menu .dropdown-toggle").click(function (e) {
+      debugger
     e.preventDefault();
     var $item = $(this).parent();
     $item.toggleClass("active");

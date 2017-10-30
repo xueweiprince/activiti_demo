@@ -1,0 +1,45 @@
+CREATE PROCEDURE `initprivilege_script`(IN password_ varchar(255))
+BEGIN
+
+	DECLARE userid_ INT;#超级管理员的用户id
+	DECLARE roleid_ INT;#超级管理员角色的角色id
+
+	DECLARE resourceid_ INT;#资源id
+
+	DECLARE tmpname varchar(20) default '';
+	DECLARE step CURSOR FOR SELECT id FROM t_resources;
+	DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET tmpname = null;
+
+	#判断administrator用户是否存在,不存在就创建一个
+	if not exists (select * from t_users_info t where t.username='test1') THEN
+		INSERT into t_users_info(username,password,enabled,email) VALUES('administrator',MD5('123456'),1,'');
+		select id from t_users_info t where t.username='test1' into userid_;
+	else
+		select id from t_users_info t where t.username='test1' into userid_;
+	end if;
+
+	#判断超级管理员角色是否存在,不存在就创建一个
+	if not EXISTS (select * from t_roles r where r.role='administrator1') THEN
+			INSERT INTO t_roles(role) VALUES('administrator1');
+			select id from t_roles tr where tr.role='administrator1' into roleid_;
+		ELSE
+			select id from t_roles tr where tr.role='administrator1' into roleid_;
+	end if;
+
+	#判断超级管理员是否有超级管理员角色,如果没有则创建一个
+	if not EXISTS (select * from t_user_role_rel url where url.userid=userid_ and url.roleid=roleid_) THEN
+		INSERT into t_user_role_rel(userid,roleid) values(userid_,roleid_);
+	end if;
+
+  #判断超级管理员是否有所有权限,如果没有则加入库中
+	OPEN step;
+
+	WHILE(tmpname is not null) DO
+		FETCH step INTO resourceid_;
+		if not EXISTS (select * from t_role_resource_rel trr where trr.resourceid=resourceid_ and trr.roleid=roleid_) THEN
+			INSERT into t_role_resource_rel(resourceid,roleid) VALUES(resourceid_,roleid_);
+		end if;
+	END WHILE;
+	CLOSE step;
+
+END

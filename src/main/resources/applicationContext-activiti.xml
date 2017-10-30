@@ -1,20 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
-	xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
-	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:p="http://www.springframework.org/schema/p"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans 
-	 http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+	   xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:p="http://www.springframework.org/schema/p"
+	   xmlns:redis="http://www.springframework.org/schema/redis"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+	 http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
 	 http://www.springframework.org/schema/context
-	 http://www.springframework.org/schema/context/spring-context-2.5.xsd
+	 http://www.springframework.org/schema/context/spring-context-3.0.xsd
 	 http://www.springframework.org/schema/tx 
-	 http://www.springframework.org/schema/tx/spring-tx-2.5.xsd 
+	 http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
 	 http://www.springframework.org/schema/aop 
-	 http://www.springframework.org/schema/aop/spring-aop-2.5.xsd
+	 http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
 	 http://www.springframework.org/schema/mvc
-	 http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd ">
+	 http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd
+	 http://www.springframework.org/schema/redis
+    http://www.springframework.org/schema/redis/spring-redis-1.0.xsd">
 
-	<context:property-placeholder location="classpath:redis.properties" />
+	<!-- 启用自动扫描 -->
+	<context:component-scan base-package="com.st.demo.web"></context:component-scan>
+	<context:property-placeholder location="classpath:*.properties" ignore-unresolvable="true" />
 
 	<!-- 事物管理 -->
 	<tx:annotation-driven transaction-manager="transactionManager" />
@@ -43,40 +48,87 @@
 
 	<!-- 配置redis开始 -->
 	<bean id="poolConfig" class="redis.clients.jedis.JedisPoolConfig">
-		<property name="maxIdle" value="${redis.maxIdle}" />
-		<property name="maxTotal" value="${redis.maxActive}" />
-		<property name="maxWaitMillis" value="${redis.maxWait}" />
-		<property name="testOnBorrow" value="${redis.testOnBorrow}" />
+		<property name="maxIdle" value="300" />
+		<property name="testOnBorrow" value="true" />
 	</bean>
 
 	<bean id="connectionFactory"
 		class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory"
-		p:host-name="${redis.host}" p:port="${redis.port}" p:password="${redis.pass}"
+		p:host-name="localhost" p:port="6379" p:password=""
 		p:pool-config-ref="poolConfig" />
 
 	<bean id="redisTemplate" class="org.springframework.data.redis.core.StringRedisTemplate">
 		<property name="connectionFactory" ref="connectionFactory" />
+		<property name="defaultSerializer">
+			<bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>
+		</property>
 	</bean>
 
 	<!--<bean id="userDAO" class="com.st.demo.web.dao.impl.RedisUserDaoImpl" />-->
 
 	<bean id="redisService" class="com.st.demo.web.service.RedisService" />
 
+	<!--<bean id="listener" class="com.st.demo.framwork.listener.MessageDelegateListenerImpl">
+		<property name="redisTemplate" ref="redisTemplate"/>
+	</bean>-->
+
+	<bean id="topicMessageListener" class="com.st.demo.framwork.listener.MessageDelegateListenerImpl">
+		<property name="redisTemplate" ref="redisTemplate"></property>
+	</bean>
+
+	<bean id="topicContainer" class="org.springframework.data.redis.listener.RedisMessageListenerContainer" destroy-method="destroy">
+		<property name="connectionFactory" ref="connectionFactory"/>
+		<property name="taskExecutor"><!-- 此处有个奇怪的问题，无法正确使用其他类型的Executor -->
+			<bean class="org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler">
+				<property name="poolSize" value="3"></property>
+			</bean>
+		</property>
+		<property name="messageListeners">
+			<map>
+				<entry key-ref="topicMessageListener">
+					<bean class="org.springframework.data.redis.listener.ChannelTopic">
+						<constructor-arg value="java"/>
+					</bean>
+				</entry>
+			</map>
+		</property>
+	</bean>
+
+	<!-- the default ConnectionFactory -->
+	<bean id="jdkSerializer" class="org.springframework.data.redis.serializer.JdkSerializationRedisSerializer" />
+
+
+	<!--<redis:listener-container connection-factory="connectionFactory">
+		 the method attribute can be skipped as the default method name is "handleMessage"
+		<redis:listener ref="listener" serializer="jdkSerializer" method="handleMessage" topic="java" />
+
+	</redis:listener-container>-->
+
 	<!-- redis配置结束 -->
 
 	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
 		<property name="driverClass" value="com.mysql.jdbc.Driver" />
 		<property name="jdbcUrl" value="jdbc:mysql://localhost:3306/test" />
-		<property name="maxIdleTime" value="25000" />
-		<property name="properties">
-			<props>
-				<prop key="user">root</prop>
-				<prop key="password">root</prop>
-				<prop key="c3p0.acquire_increment">2</prop>
-				<prop key="c3p0.max_size">20</prop>
-				<prop key="c3p0.min_size">1</prop>
-			</props>
-		</property>
+		<property name="user" value="root" />
+		<property name="password" value="root" />
+		<!-- 当连接数耗尽时，一次重新申请的连接数 -->
+		<property name="acquireIncrement" value="5"></property>
+		<!-- 初始化连接数 -->
+		<property name="initialPoolSize" value="50"></property>
+		<!-- 最大空闲时间(秒) -->
+		<property name="maxIdleTime" value="60"></property>
+		<!-- 最大连接数 -->
+		<property name="maxPoolSize" value="800"></property>
+		<!-- 最小连接数 -->
+		<property name="minPoolSize" value="10"></property>
+		<!-- 获取失败时，重新获取时的间隔时间 (毫秒)-->
+		<property name="acquireRetryDelay" value="1000"></property>
+		<!-- 获取失败后，重新尝试的次数 -->
+		<property name="acquireRetryAttempts" value="60"></property>
+		<!--获取连接失败将会引起所有等待连接池来获取连接的线程抛出异常。但是数据源仍有效
+                            保留，并在下次调用getConnection()的时候继续尝试获取连接。如果设为true，那么在尝试
+                            获取连接失败后该数据源将申明已断开并永久关闭。Default: false-->
+		<property name="breakAfterAcquireFailure" value="false"></property>
 	</bean>
 
 	<!-- 集成mybatis 配置mybatis的sqlsessionFactory(用来生成sqlsession的) -->
@@ -93,7 +145,10 @@
 	<!-- 扫描mapper.java -->
 	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
 		<property name="basePackage" value="com.st.demo.web.dao" />
-		<property name="sqlSessionFactory" ref="sqlSessionFactory" />
+		<!-- 不推荐这种配置方法，因为这样会导致datasource(67 - 90)的配置内容无法替换${..}中的内容-->
+		<!--<property name="sqlSessionFactory" ref="sqlSessionFactory" />-->
+		<!-- 推荐这种配置 -->
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
 	</bean>
 
 	<!-- 流程引擎的配置bean -->
@@ -171,9 +226,9 @@
 	<bean class = "com.st.demo.web.common.SpringContextUtil" id="springContextUtil" />
 	
 	<!-- spring security的异常信息,在这里做注入是为了可以将异常信息在代码中取出来 (异常信息本地化) -->
-	<bean id="messageSource"
+	<!--<bean id="messageSource"
 	   class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
 	      <property name="basename" value="classpath:org/springframework/security/messages" />
-   </bean>
+   </bean>-->
 
 </beans>
